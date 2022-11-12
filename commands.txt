@@ -1,0 +1,93 @@
+Azure commands
+
+=========================================================================
+Install Powershell Core and module Az
+winget search Microsoft.PowerShell 							# Search all available Powershell versions
+winget install --id Microsoft.Powershell.Preview --source winget 		# Install the Powershell Preview version
+Install-Module -Name Az -AllowClobber -Repository PSGallery -Force  	# Install the Az module
+Get-InstalledModule -Name Az -AllVersions | Select-Object -Property Name, Version  	# Check a version of the Az module
+Set-ExecutionPolicy RemoteSigned							# Allow execution of the remote signed scripts
+Import-Module Az.Accounts								# Import the AZ Accounts module
+Connect-AzAccount										# Connect to the Azure Account
+
+General commands
+Get-AzVM											# Get VMs
+Get-AzWebApp										# Get WebApps		
+Get-AzWebApp | Select-Object Name, Location | ConvertTo-CSV -NoTypeInformation	# Get WebApps in the CSV format
+
+Get-AzSubscription									# Get the list of subscriptions
+$context = Get-AzSubscription -SubscriptionId <SubscriptionId>		# Get a subscription to the variable context
+Set-AzContext $context									# Set a subscription
+
+=========================================================================
+Install Azure cli and connect from Linux
+sudo apt install azure-cli
+az login
+az account list
+az login --tenant <tenant-id> --allow-no-subscriptions			# Login to tenant (i.e. example.com) without any subscriptions (payment agreement)
+
+
+=========================================================================
+Manage Users and Groups
+az ad user list
+az ad user create --display-name Fred --password $password --user-principal-name fred@motodevopstenant.onmicrosoft.com
+az ad group create --display-name AppDev --mail-nickname AppDev
+az ad user show --id bob@motodevopstenant.onmicrosoft.com --output yaml | grep objectId
+az ad group member add --group Ops --member-id $daveid
+
+
+
+
+az vm list    # show the list of VMs
+
+az vm create \  # create vm with params
+  --resource-group learn-6d3d683c-46f4-4d27-b892-9f3294cc6584 \
+  --name my-vm \
+  --image UbuntuLTS \
+  --admin-username azureuser \
+  --generate-ssh-keys
+
+az vm extension set \  # install an application
+  --resource-group learn-6d3d683c-46f4-4d27-b892-9f3294cc6584 \
+  --vm-name my-vm \
+  --name customScript \
+  --publisher Microsoft.Azure.Extensions \
+  --version 2.1 \
+  --settings '{"fileUris":["https://raw.githubusercontent.com/MicrosoftDocs/mslearn-welcome-to-azure/master/configure-nginx.sh"]}' \
+  --protected-settings '{"commandToExecute": "./configure-nginx.sh"}'
+
+
+az vm list-ip-addresses   # get your VM's IP address
+IPADDRESS="$(az vm list-ip-addresses \  # store the result in the variable IPADDRESS
+  --resource-group learn-6d3d683c-46f4-4d27-b892-9f3294cc6584 \
+  --name my-vm \
+  --query "[].virtualMachine.network.publicIpAddresses[*].ipAddress" \
+  --output tsv)"
+
+curl --connect-timeout 5 http://$IPADDRESS # allow up to five seconds for the connection to occur
+
+az network nsg list \  # list the network security groups
+  --resource-group learn-6d3d683c-46f4-4d27-b892-9f3294cc6584 \
+  --query '[].name' \
+  --output tsv
+
+az network nsg rule list \  # list the rules associated with the NSG
+  --resource-group learn-6d3d683c-46f4-4d27-b892-9f3294cc6584 \
+  --nsg-name my-vmNSG
+
+az network nsg rule list \  # --query argument to retrieve only the name, priority, affected ports, and access (Allow or Deny) for each rule
+  --resource-group learn-6d3d683c-46f4-4d27-b892-9f3294cc6584 \
+  --nsg-name my-vmNSG \
+  --query '[].{Name:name, Priority:priority, Port:destinationPortRange, Access:access}' \
+  --output table
+
+az network nsg rule create \  # allows inbound access on port 80
+  --resource-group learn-6d3d683c-46f4-4d27-b892-9f3294cc6584 \
+  --nsg-name my-vmNSG \
+  --name allow-http \
+  --protocol tcp \
+  --priority 100 \
+  --destination-port-range 80 \
+  --access Allow
+
+
